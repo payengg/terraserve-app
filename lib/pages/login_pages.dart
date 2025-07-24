@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:terraserve_app/pages/register_pages.dart'; // ✅ Arahkan ke halaman register
+import 'package:terraserve_app/pages/register_pages.dart';
+import 'package:terraserve_app/pages/lupa_pw_pages.dart'; // Pastikan import ini ada
 
 class LoginPages extends StatefulWidget {
   const LoginPages({super.key});
@@ -224,8 +225,12 @@ class _LoginPagesState extends State<LoginPages> {
           ],
         ),
         TextButton(
+          // ✅ Fungsi onPressed diubah untuk navigasi
           onPressed: () {
-            // TODO: Tambahkan aksi lupa password
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const LupaPwPages()),
+            );
           },
           child: Text(
             'Lupa Password?',

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:terraserve_app/pages/login_pages.dart'; // Untuk kembali ke halaman login
+import 'package:terraserve_app/pages/login_pages.dart';
 
 class RegisterPages extends StatefulWidget {
   const RegisterPages({super.key});
@@ -12,7 +12,7 @@ class RegisterPages extends StatefulWidget {
 class _RegisterPagesState extends State<RegisterPages> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
-  final int _selectedTabIndex = 1; // Aktifkan tab 'Daftar'
+  final int _selectedTabIndex = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -20,17 +20,18 @@ class _RegisterPagesState extends State<RegisterPages> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Gambar di kanan atas
+          // Gambar di kanan atas yang tetap statis
           Positioned(
             top: 0,
             right: 0,
             child: Image.asset(
               'assets/images/produk_login.png',
               width: MediaQuery.of(context).size.width * 0.5,
+              fit: BoxFit.cover,
             ),
           ),
 
-          // Konten utama yang bisa digulir
+          // Semua konten (termasuk tombol back + logo) sekarang berada di dalam SingleChildScrollView
           SafeArea(
             child: SingleChildScrollView(
               child: Padding(
@@ -38,7 +39,19 @@ class _RegisterPagesState extends State<RegisterPages> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 80),
+                    // ✅ Tombol kembali sekarang menjadi bagian dari konten yang bisa digulir
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Image.asset(
+                          'assets/images/back.png',
+                          width: 24,
+                          height: 24,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
                     // Logo Terraserve
                     Image.asset(
@@ -101,7 +114,8 @@ class _RegisterPagesState extends State<RegisterPages> {
                       isVisible: _isConfirmPasswordVisible,
                       onToggleVisibility: () {
                         setState(() {
-                          _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                          _isConfirmPasswordVisible =
+                              !_isConfirmPasswordVisible;
                         });
                       },
                     ),
@@ -109,9 +123,7 @@ class _RegisterPagesState extends State<RegisterPages> {
 
                     _buildPrimaryButton(
                       text: 'Daftar',
-                      onPressed: () {
-                        // Tambahkan logika daftar
-                      },
+                      onPressed: () {},
                     ),
                     const SizedBox(height: 24),
 
@@ -123,16 +135,7 @@ class _RegisterPagesState extends State<RegisterPages> {
             ),
           ),
 
-          // Tombol kembali yang tidak ikut tergulir
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-          ),
+          // ✅ Tombol kembali yang statis di sini sudah dihapus
         ],
       ),
     );
@@ -233,10 +236,13 @@ class _RegisterPagesState extends State<RegisterPages> {
           obscureText: !isVisible,
           decoration: InputDecoration(
             hintText: '••••••••',
-            prefixIcon: const Icon(Icons.lock_outline_rounded, color: Colors.grey),
+            prefixIcon: const Icon(Icons.lock_outline_rounded,
+                color: Colors.grey),
             suffixIcon: IconButton(
               icon: Icon(
-                isVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                isVisible
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
                 color: Colors.grey,
               ),
               onPressed: onToggleVisibility,
