@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:terraserve_app/config/api.dart'; // Pastikan file ini ada
 import 'package:terraserve_app/pages/login_pages.dart';
 
 class RegisterPages extends StatefulWidget {
@@ -10,9 +13,103 @@ class RegisterPages extends StatefulWidget {
 }
 
 class _RegisterPagesState extends State<RegisterPages> {
+  // Kunci untuk validasi form
+  final _formKey = GlobalKey<FormState>();
+
+  // Controller untuk mengambil teks dari setiap field
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  // State untuk UI
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  bool _isLoading = false; // Untuk menampilkan loading indicator
   final int _selectedTabIndex = 1;
+
+  // Fungsi untuk menangani proses registrasi
+  Future<void> _registerUser() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/register'),
+        headers: {'Accept': 'application/json'},
+        body: {
+          'name': _nameController.text,
+          'email': _emailController.text,
+          'phone': _phoneController.text,
+          'password': _passwordController.text,
+          'password_confirmation': _confirmPasswordController.text,
+        },
+      );
+
+      print('Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Registrasi berhasil! Silakan login.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const LoginPages()),
+          );
+        }
+      } else {
+        final responseBody = json.decode(response.body);
+        String errorMessage =
+            responseBody['message'] ?? 'Terjadi kesalahan. Coba lagi.';
+        if (responseBody['errors'] != null) {
+          errorMessage = responseBody['errors'].entries.first.value[0];
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      print('Register Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Tidak dapat terhubung ke server. Periksa koneksi Anda.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +117,6 @@ class _RegisterPagesState extends State<RegisterPages> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Gambar di kanan atas yang tetap statis
           Positioned(
             top: 0,
             right: 0,
@@ -30,116 +126,151 @@ class _RegisterPagesState extends State<RegisterPages> {
               fit: BoxFit.cover,
             ),
           ),
-
-          // Semua konten (termasuk tombol back + logo) sekarang berada di dalam SingleChildScrollView
           SafeArea(
             child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ✅ Tombol kembali sekarang menjadi bagian dari konten yang bisa digulir
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16.0),
-                      child: GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: Image.asset(
-                          'assets/images/back.png',
-                          width: 24,
-                          height: 24,
+                child: Form(
+                  // Menggunakan Form widget
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Image.asset(
+                            'assets/images/back.png',
+                            width: 24,
+                            height: 24,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Logo Terraserve
-                    Image.asset(
-                      'assets/images/logo_terraserve.png',
-                      width: 45,
-                      height: 47,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Judul
-                    Text(
-                      'Mulailah sekarang',
-                      style: GoogleFonts.poppins(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                      const SizedBox(height: 16),
+                      Image.asset(
+                        'assets/images/logo_terraserve.png',
+                        width: 45,
+                        height: 47,
                       ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Tab Login/Daftar
-                    _buildLoginTabs(),
-                    const SizedBox(height: 24),
-
-                    // Form Fields
-                    _buildTextField(
-                      label: 'Nama Lengkap',
-                      hint: 'Masukkan nama anda',
-                      icon: Icons.person_outline,
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildTextField(
-                      label: 'Alamat Email',
-                      hint: 'Masukkan email anda',
-                      icon: Icons.email_outlined,
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildTextField(
-                      label: 'Nomor Telepon',
-                      hint: 'Masukkan nomor telepon',
-                      icon: Icons.phone_iphone_rounded,
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildPasswordField(
-                      label: 'Atur Kata Sandi',
-                      isVisible: _isPasswordVisible,
-                      onToggleVisibility: () {
-                        setState(() {
-                          _isPasswordVisible = !_isPasswordVisible;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildPasswordField(
-                      label: 'Konfirmasi Kata Sandi',
-                      isVisible: _isConfirmPasswordVisible,
-                      onToggleVisibility: () {
-                        setState(() {
-                          _isConfirmPasswordVisible =
-                              !_isConfirmPasswordVisible;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    _buildPrimaryButton(
-                      text: 'Daftar',
-                      onPressed: () {},
-                    ),
-                    const SizedBox(height: 24),
-
-                    _buildDisclaimer(),
-                    const SizedBox(height: 32),
-                  ],
+                      const SizedBox(height: 24),
+                      Text(
+                        'Mulailah sekarang',
+                        style: GoogleFonts.poppins(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildLoginTabs(),
+                      const SizedBox(height: 24),
+                      _buildTextField(
+                        controller: _nameController,
+                        label: 'Full name',
+                        hint: 'Masukkan nama anda',
+                        icon: Icons.person_outline,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Nama tidak boleh kosong';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _emailController,
+                        label: 'Email address',
+                        hint: 'Masukkan email anda',
+                        icon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Email tidak boleh kosong';
+                          }
+                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                            return 'Format email tidak valid';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _phoneController,
+                        label: 'Phone number',
+                        hint: 'Masukkan nomor telepon',
+                        icon: Icons.phone_iphone_rounded,
+                        keyboardType: TextInputType.phone,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Nomor telepon tidak boleh kosong';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildPasswordField(
+                        controller: _passwordController,
+                        label: 'Set password',
+                        isVisible: _isPasswordVisible,
+                        onToggleVisibility: () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Password tidak boleh kosong';
+                          }
+                          if (value.length < 8) {
+                            return 'Password minimal 8 karakter';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildPasswordField(
+                        controller: _confirmPasswordController,
+                        label: 'Confirm password',
+                        isVisible: _isConfirmPasswordVisible,
+                        onToggleVisibility: () {
+                          setState(() {
+                            _isConfirmPasswordVisible =
+                                !_isConfirmPasswordVisible;
+                          });
+                        },
+                        validator: (value) {
+                          if (value != _passwordController.text) {
+                            return 'Konfirmasi password tidak cocok';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      _buildPrimaryButton(
+                        text: 'Daftar',
+                        onPressed: _isLoading ? null : _registerUser,
+                        child: _isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : null,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildDisclaimer(),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-
-          // ✅ Tombol kembali yang statis di sini sudah dihapus
         ],
       ),
     );
   }
+
+  // --- WIDGET BUILDER METHODS (Sudah dimodifikasi untuk TextFormField) ---
 
   Widget _buildLoginTabs() {
     return Container(
@@ -149,7 +280,7 @@ class _RegisterPagesState extends State<RegisterPages> {
       ),
       child: Row(
         children: [
-          Expanded(child: _buildTabItem('Masuk', 0)),
+          Expanded(child: _buildTabItem('Login', 0)),
           Expanded(child: _buildTabItem('Daftar', 1)),
         ],
       ),
@@ -195,16 +326,22 @@ class _RegisterPagesState extends State<RegisterPages> {
   }
 
   Widget _buildTextField({
+    required TextEditingController controller,
     required String label,
     required String hint,
     required IconData icon,
+    required String? Function(String?) validator,
+    TextInputType? keyboardType,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
-        TextField(
+        TextFormField(
+          controller: controller,
+          validator: validator,
+          keyboardType: keyboardType,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: Icon(icon, color: Colors.grey),
@@ -223,21 +360,27 @@ class _RegisterPagesState extends State<RegisterPages> {
   }
 
   Widget _buildPasswordField({
+    required TextEditingController controller,
     required String label,
     required bool isVisible,
     required VoidCallback onToggleVisibility,
+    required String? Function(String?) validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
-        TextField(
+        TextFormField(
+          controller: controller,
+          validator: validator,
           obscureText: !isVisible,
           decoration: InputDecoration(
-            hintText: 'Masukkan kata sandi',
-            prefixIcon: const Icon(Icons.lock_outline_rounded,
-                color: Colors.grey),
+            hintText: '••••••••',
+            prefixIcon: const Icon(
+              Icons.lock_outline_rounded,
+              color: Colors.grey,
+            ),
             suffixIcon: IconButton(
               icon: Icon(
                 isVisible
@@ -263,7 +406,8 @@ class _RegisterPagesState extends State<RegisterPages> {
 
   Widget _buildPrimaryButton({
     required String text,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
+    Widget? child,
   }) {
     return SizedBox(
       width: double.infinity,
@@ -272,18 +416,21 @@ class _RegisterPagesState extends State<RegisterPages> {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF859F3D),
+          disabledBackgroundColor: const Color(0xFF859F3D).withOpacity(0.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        child: Text(
-          text,
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
+        child:
+            child ??
+            Text(
+              text,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
       ),
     );
   }
@@ -292,10 +439,7 @@ class _RegisterPagesState extends State<RegisterPages> {
     return Text(
       'Dengan mendaftar, Anda menyetujui Persyaratan Layanan dan Perjanjian Pemrosesan Data',
       textAlign: TextAlign.center,
-      style: GoogleFonts.poppins(
-        fontSize: 12,
-        color: Colors.grey[600],
-      ),
+      style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
     );
   }
 }

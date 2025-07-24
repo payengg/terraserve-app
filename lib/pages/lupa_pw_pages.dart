@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:country_picker/country_picker.dart';
+import 'package:terraserve_app/config/api.dart';
 import 'package:terraserve_app/pages/verify_code_pages.dart';
 
 class LupaPwPages extends StatefulWidget {
@@ -11,7 +14,10 @@ class LupaPwPages extends StatefulWidget {
 }
 
 class _LupaPwPagesState extends State<LupaPwPages> {
+  final _formKey = GlobalKey<FormState>();
+  final _inputController = TextEditingController();
   int _selectedTabIndex = 0;
+  bool _isLoading = false;
 
   Country _selectedCountry = Country(
     phoneCode: '62',
@@ -25,6 +31,68 @@ class _LupaPwPagesState extends State<LupaPwPages> {
     displayNameNoCountryCode: 'ID',
     e164Key: '',
   );
+
+  Future<void> _sendCode() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final isEmail = _selectedTabIndex == 0;
+    final endpoint = isEmail ? '/forgot-password' : '/forgot-password/phone';
+    final key = isEmail ? 'email' : 'phone';
+    final value = isEmail
+        ? _inputController.text
+        : '+${_selectedCountry.phoneCode}${_inputController.text}';
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: {'Accept': 'application/json'},
+        body: {key: value},
+      );
+
+      final responseBody = json.decode(response.body);
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(responseBody['meta']['message'] ?? 'Kode OTP telah dikirim.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // TODO: Navigasi ke halaman verifikasi OTP
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(responseBody['meta']['message'] ?? 'Gagal mengirim kode.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tidak dapat terhubung ke server. Periksa koneksi Anda.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,48 +109,46 @@ class _LupaPwPagesState extends State<LupaPwPages> {
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 27),
-              Text(
-                'Lupa Password',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                const SizedBox(height: 27),
+                Text(
+                  'Lupa Password',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Masukkan email atau nomor telepon Anda, kami akan mengirimkan kode verifikasi',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  color: Colors.grey[600],
+                const SizedBox(height: 16),
+                Text(
+                  'Masukkan email atau nomor telepon Anda, kami akan mengirimkan kode verifikasi',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 80),
-              _buildTabs(),
-              const SizedBox(height: 49),
-              if (_selectedTabIndex == 0)
-                _buildEmailField(hint: 'Masukkan email Anda')
-              else
-                // ✅ Label dihilangkan dari sini
-                _buildMobileField(),
-              // ✅ Jarak ke tombol didekatkan
-              const SizedBox(height: 25),
-              _buildPrimaryButton(
-                text: 'Kirim Kode',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const VerifyCodePage()),
-                  );
-                },
-              ),
-            ],
+                const SizedBox(height: 80),
+                _buildTabs(),
+                const SizedBox(height: 49),
+                if (_selectedTabIndex == 0)
+                  _buildEmailField()
+                else
+                  _buildMobileField(),
+                const SizedBox(height: 25),
+                _buildPrimaryButton(
+                  text: 'Kirim Kode',
+                  onPressed: _isLoading ? null : _sendCode,
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : null,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -98,7 +164,7 @@ class _LupaPwPagesState extends State<LupaPwPages> {
       child: Row(
         children: [
           Expanded(child: _buildTabItem('E-mail', 0)),
-          Expanded(child: _buildTabItem('Mobile Number', 1)),
+          Expanded(child: _buildTabItem('Nomor Handphone', 1)),
         ],
       ),
     );
@@ -110,6 +176,8 @@ class _LupaPwPagesState extends State<LupaPwPages> {
       onTap: () {
         setState(() {
           _selectedTabIndex = index;
+          _inputController.clear();
+          _formKey.currentState?.reset();
         });
       },
       child: AnimatedContainer(
@@ -141,17 +209,22 @@ class _LupaPwPagesState extends State<LupaPwPages> {
     );
   }
 
-  Widget _buildEmailField({required String hint}) {
-    return TextField(
+  Widget _buildEmailField() {
+    return TextFormField(
+      controller: _inputController,
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Email tidak boleh kosong';
+        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+          return 'Format email tidak valid';
+        }
+        return null;
+      },
       keyboardType: TextInputType.emailAddress,
       decoration: InputDecoration(
-        hintText: hint,
+        hintText: 'Masukkan email Anda',
         prefixIcon: Padding(
           padding: const EdgeInsets.all(14.0),
-          child: Image.asset(
-            'assets/images/icon_email.png',
-            height: 20,
-          ),
+          child: Image.asset('assets/images/icon_email.png', height: 20),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -165,35 +238,37 @@ class _LupaPwPagesState extends State<LupaPwPages> {
     );
   }
 
-  // ✅ Widget diubah, tidak lagi menggunakan Column dan label
   Widget _buildMobileField() {
-    return TextField(
+    return TextFormField(
+      controller: _inputController,
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Nomor telepon tidak boleh kosong';
+        return null;
+      },
       keyboardType: TextInputType.phone,
       decoration: InputDecoration(
-        hintText: 'Masukan nomor Anda',
+        hintText: 'Masukkan nomor Anda',
         prefixIcon: GestureDetector(
           onTap: () {
             showCountryPicker(
               context: context,
-              countryListTheme: CountryListThemeData(
-                bottomSheetHeight: 500,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                inputDecoration: InputDecoration(
-                  labelText: 'Cari Negara',
-                  hintText: 'Mulai ketik untuk mencari',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: const Color(0xFF8C98A8).withOpacity(0.2),
-                    ),
-                  ),
-                ),
-              ),
               onSelect: (Country country) {
                 setState(() {
                   _selectedCountry = country;
                 });
               },
+              countryListTheme: CountryListThemeData(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                bottomSheetHeight: 500,
+                inputDecoration: InputDecoration(
+                  labelText: 'Cari Negara',
+                  hintText: 'Mulai ketik untuk mencari',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
+                  ),
+                ),
+              ),
             );
           },
           child: Padding(
@@ -201,16 +276,12 @@ class _LupaPwPagesState extends State<LupaPwPages> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  _selectedCountry.flagEmoji,
-                  style: const TextStyle(fontSize: 24),
-                ),
+                Text(_selectedCountry.flagEmoji, style: const TextStyle(fontSize: 24)),
                 const SizedBox(width: 8),
                 Text(
                   '+${_selectedCountry.phoneCode}',
                   style: GoogleFonts.poppins(fontSize: 16),
                 ),
-                const SizedBox(width: 4),
                 const Icon(Icons.arrow_drop_down, color: Colors.grey),
               ],
             ),
@@ -228,7 +299,11 @@ class _LupaPwPagesState extends State<LupaPwPages> {
     );
   }
 
-  Widget _buildPrimaryButton({required String text, required VoidCallback onPressed}) {
+  Widget _buildPrimaryButton({
+    required String text,
+    required VoidCallback? onPressed,
+    Widget? child,
+  }) {
     return SizedBox(
       width: double.infinity,
       height: 50,
@@ -236,16 +311,18 @@ class _LupaPwPagesState extends State<LupaPwPages> {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF859F3D),
+          disabledBackgroundColor: const Color(0xFF859F3D).withOpacity(0.5),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: Text(
-          text,
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
+        child: child ??
+            Text(
+              text,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
       ),
     );
   }

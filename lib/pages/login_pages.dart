@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:terraserve_app/config/api.dart'; // Pastikan file ini ada
+import 'package:terraserve_app/pages/dashboard_pages.dart'; // Halaman tujuan setelah login
 import 'package:terraserve_app/pages/register_pages.dart';
-import 'package:terraserve_app/pages/lupa_pw_pages.dart'; 
+import 'package:terraserve_app/pages/lupa_pw_pages.dart';
 
 class LoginPages extends StatefulWidget {
   const LoginPages({super.key});
@@ -11,9 +15,93 @@ class LoginPages extends StatefulWidget {
 }
 
 class _LoginPagesState extends State<LoginPages> {
+  // Kunci untuk validasi form
+  final _formKey = GlobalKey<FormState>();
+
+  // Controller untuk mengambil teks
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  // State untuk UI
   bool _isPasswordVisible = false;
   bool _rememberMe = false;
-  int _selectedTabIndex = 0;
+  bool _isLoading = false;
+
+  // Fungsi untuk menangani proses login
+  Future<void> _loginUser() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/login'),
+        headers: {'Accept': 'application/json'},
+        body: {
+          'email': _emailController.text,
+          'password': _passwordController.text,
+        },
+      );
+
+      print('Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body)['data'];
+        final accessToken = data['access_token'];
+        final user = data['User']; // atau 'user' tergantung respon API Anda
+
+        // TODO: Simpan access_token dengan aman (misal: flutter_secure_storage)
+
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              // Kirim data user ke halaman dashboard
+              builder: (context) => DashboardPages(user: user),
+            ),
+          );
+        }
+      } else {
+        final responseBody = json.decode(response.body);
+        String errorMessage =
+            responseBody['message'] ?? 'Email atau password salah.';
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      print('Login Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Tidak dapat terhubung ke server. Periksa koneksi Anda.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,44 +121,60 @@ class _LoginPagesState extends State<LoginPages> {
             child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 80),
-                    Image.asset(
-                      'assets/images/logo_terraserve.png',
-                      width: 45,
-                      height: 47,
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Masuk ke Akun\nAnda',
-                      style: GoogleFonts.poppins(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                child: Form(
+                  // Menggunakan Form
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 80),
+                      Image.asset(
+                        'assets/images/logo_terraserve.png',
+                        width: 45,
+                        height: 47,
                       ),
-                    ),
-                    const SizedBox(height: 32),
-                    _buildLoginTabs(),
-                    const SizedBox(height: 32),
-                    _buildTextField(label: 'E-mail atau Nomor Telepon', hint: 'Masukkan email atau nomor telepon'),
-                    const SizedBox(height: 20),
-                    _buildPasswordField(),
-                    const SizedBox(height: 16),
-                    _buildRememberAndForgot(),
-                    const SizedBox(height: 32),
-                    _buildPrimaryButton(text: 'Masuk', onPressed: () {
-                      // TODO: Tambahkan logika login
-                    }),
-                    const SizedBox(height: 24),
-                    _buildDivider(),
-                    const SizedBox(height: 24),
-                    _buildGoogleButton(),
-                    const SizedBox(height: 32),
-                    _buildDisclaimer(),
-                    const SizedBox(height: 20),
-                  ],
+                      const SizedBox(height: 24),
+                      Text(
+                        'Masuk ke Akun\nAnda',
+                        style: GoogleFonts.poppins(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      _buildLoginTabs(),
+                      const SizedBox(height: 32),
+                      _buildTextField(
+                        controller: _emailController,
+                        label: 'Email',
+                        hint: 'Masukkan email anda',
+                        icon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildPasswordField(controller: _passwordController),
+                      const SizedBox(height: 16),
+                      _buildRememberAndForgot(),
+                      const SizedBox(height: 32),
+                      _buildPrimaryButton(
+                        text: 'Masuk',
+                        onPressed: _isLoading ? null : _loginUser,
+                        child: _isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : null,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildDivider(),
+                      const SizedBox(height: 24),
+                      _buildGoogleButton(),
+                      const SizedBox(height: 32),
+                      _buildDisclaimer(),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -80,6 +184,8 @@ class _LoginPagesState extends State<LoginPages> {
     );
   }
 
+  // --- WIDGET BUILDER METHODS (Sudah dimodifikasi) ---
+
   Widget _buildLoginTabs() {
     return Container(
       decoration: BoxDecoration(
@@ -88,7 +194,7 @@ class _LoginPagesState extends State<LoginPages> {
       ),
       child: Row(
         children: [
-          Expanded(child: _buildTabItem('Masuk', 0)),
+          Expanded(child: _buildTabItem('Login', 0)),
           Expanded(child: _buildTabItem('Daftar', 1)),
         ],
       ),
@@ -96,19 +202,13 @@ class _LoginPagesState extends State<LoginPages> {
   }
 
   Widget _buildTabItem(String text, int index) {
-    bool isSelected = _selectedTabIndex == index;
-
+    bool isSelected = index == 0;
     return GestureDetector(
       onTap: () {
         if (index == 1) {
-          Navigator.push(
-            context,
+          Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => const RegisterPages()),
           );
-        } else {
-          setState(() {
-            _selectedTabIndex = index;
-          });
         }
       },
       child: AnimatedContainer(
@@ -121,7 +221,6 @@ class _LoginPagesState extends State<LoginPages> {
               ? [
                   BoxShadow(
                     color: Colors.grey.withOpacity(0.2),
-                    spreadRadius: 1,
                     blurRadius: 5,
                     offset: const Offset(0, 2),
                   ),
@@ -140,19 +239,30 @@ class _LoginPagesState extends State<LoginPages> {
     );
   }
 
-  Widget _buildTextField({required String label, required String hint}) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType? keyboardType,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
-        TextField(
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return '$label tidak boleh kosong';
+            }
+            return null;
+          },
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: Padding(
-              padding: const EdgeInsets.all(14.0),
-              child: Image.asset('assets/images/icon_phone.png', height: 20),
-            ),
+            prefixIcon: Icon(icon, color: Colors.grey),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey[300]!),
@@ -167,30 +277,39 @@ class _LoginPagesState extends State<LoginPages> {
     );
   }
 
-  Widget _buildPasswordField() {
+  Widget _buildPasswordField({required TextEditingController controller}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Kata Sandi', style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+        Text(
+          'Password',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+        ),
         const SizedBox(height: 8),
-        TextField(
+        TextFormField(
+          controller: controller,
           obscureText: !_isPasswordVisible,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Password tidak boleh kosong';
+            }
+            return null;
+          },
           decoration: InputDecoration(
-            hintText: 'Masukkan kata sandi',
-            prefixIcon: Padding(
-              padding: const EdgeInsets.all(14.0),
-              child: Image.asset('assets/images/icon_password.png', height: 20),
+            hintText: '••••••••',
+            prefixIcon: const Icon(
+              Icons.lock_outline_rounded,
+              color: Colors.grey,
             ),
             suffixIcon: IconButton(
               icon: Icon(
-                _isPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                _isPasswordVisible
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
                 color: Colors.grey,
               ),
-              onPressed: () {
-                setState(() {
-                  _isPasswordVisible = !_isPasswordVisible;
-                });
-              },
+              onPressed: () =>
+                  setState(() => _isPasswordVisible = !_isPasswordVisible),
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -214,21 +333,15 @@ class _LoginPagesState extends State<LoginPages> {
           children: [
             Checkbox(
               value: _rememberMe,
-              onChanged: (value) {
-                setState(() {
-                  _rememberMe = value!;
-                });
-              },
+              onChanged: (value) => setState(() => _rememberMe = value!),
               activeColor: const Color(0xFF859F3D),
             ),
             Text('Ingat saya', style: GoogleFonts.poppins()),
           ],
         ),
         TextButton(
-          // ✅ Fungsi onPressed diubah untuk navigasi
           onPressed: () {
-            Navigator.push(
-              context,
+            Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const LupaPwPages()),
             );
           },
@@ -241,7 +354,11 @@ class _LoginPagesState extends State<LoginPages> {
     );
   }
 
-  Widget _buildPrimaryButton({required String text, required VoidCallback onPressed}) {
+  Widget _buildPrimaryButton({
+    required String text,
+    required VoidCallback? onPressed,
+    Widget? child,
+  }) {
     return SizedBox(
       width: double.infinity,
       height: 50,
@@ -249,16 +366,21 @@ class _LoginPagesState extends State<LoginPages> {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF859F3D),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        child: Text(
-          text,
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
+          disabledBackgroundColor: const Color(0xFF859F3D).withOpacity(0.5),
         ),
+        child:
+            child ??
+            Text(
+              text,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
       ),
     );
   }
@@ -269,7 +391,10 @@ class _LoginPagesState extends State<LoginPages> {
         const Expanded(child: Divider()),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Text('Atau login dengan', style: GoogleFonts.poppins(color: Colors.grey)),
+          child: Text(
+            'Atau login dengan',
+            style: GoogleFonts.poppins(color: Colors.grey),
+          ),
         ),
         const Expanded(child: Divider()),
       ],
@@ -292,7 +417,9 @@ class _LoginPagesState extends State<LoginPages> {
         ),
         style: OutlinedButton.styleFrom(
           side: BorderSide(color: Colors.grey[300]!),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );
