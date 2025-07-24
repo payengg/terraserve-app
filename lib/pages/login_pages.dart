@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:terraserve_app/pages/register_pages.dart';
-import 'package:terraserve_app/pages/lupa_pw_pages.dart'; // Pastikan import ini ada
+import 'package:terraserve_app/pages/lupa_pw_pages.dart'; 
 
 class LoginPages extends StatefulWidget {
   const LoginPages({super.key});
@@ -54,7 +54,7 @@ class _LoginPagesState extends State<LoginPages> {
                     const SizedBox(height: 32),
                     _buildLoginTabs(),
                     const SizedBox(height: 32),
-                    _buildTextField(label: 'Phone number', hint: 'Masukkan nomor telepon'),
+                    _buildTextField(label: 'E-mail atau Nomor Telepon', hint: 'Masukkan email atau nomor telepon'),
                     const SizedBox(height: 20),
                     _buildPasswordField(),
                     const SizedBox(height: 16),
@@ -88,7 +88,7 @@ class _LoginPagesState extends State<LoginPages> {
       ),
       child: Row(
         children: [
-          Expanded(child: _buildTabItem('Login', 0)),
+          Expanded(child: _buildTabItem('Masuk', 0)),
           Expanded(child: _buildTabItem('Daftar', 1)),
         ],
       ),
@@ -171,12 +171,12 @@ class _LoginPagesState extends State<LoginPages> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Password', style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+        Text('Kata Sandi', style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
         TextField(
           obscureText: !_isPasswordVisible,
           decoration: InputDecoration(
-            hintText: '••••••••',
+            hintText: 'Masukkan kata sandi',
             prefixIcon: Padding(
               padding: const EdgeInsets.all(14.0),
               child: Image.asset('assets/images/icon_password.png', height: 20),

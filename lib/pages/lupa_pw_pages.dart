@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:terraserve_app/pages/login_pages.dart';
+import 'package:country_picker/country_picker.dart';
+import 'package:terraserve_app/pages/verify_code_pages.dart';
 
 class LupaPwPages extends StatefulWidget {
   const LupaPwPages({super.key});
@@ -10,8 +11,20 @@ class LupaPwPages extends StatefulWidget {
 }
 
 class _LupaPwPagesState extends State<LupaPwPages> {
-  // 0 untuk E-mail, 1 untuk Mobile Number
   int _selectedTabIndex = 0;
+
+  Country _selectedCountry = Country(
+    phoneCode: '62',
+    countryCode: 'ID',
+    e164Sc: 0,
+    geographic: true,
+    level: 1,
+    name: 'Indonesia',
+    example: 'Indonesia',
+    displayName: 'Indonesia',
+    displayNameNoCountryCode: 'ID',
+    e164Key: '',
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -29,12 +42,12 @@ class _LupaPwPagesState extends State<LupaPwPages> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 40),
-              // Judul
+              const SizedBox(height: 27),
               Text(
                 'Lupa Password',
+                textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -42,33 +55,31 @@ class _LupaPwPagesState extends State<LupaPwPages> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Subjudul
               Text(
                 'Masukkan email atau nomor telepon Anda, kami akan mengirimkan kode verifikasi',
+                textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   color: Colors.grey[600],
                 ),
               ),
-              const SizedBox(height: 32),
-
-              // Tombol Tab E-mail/Mobile Number
+              const SizedBox(height: 80),
               _buildTabs(),
-              const SizedBox(height: 32),
-
-              // Tampilkan field yang sesuai berdasarkan tab yang aktif
+              const SizedBox(height: 49),
               if (_selectedTabIndex == 0)
-                _buildTextField(label: 'E-mail', hint: 'Masukkan email Anda')
+                _buildEmailField(hint: 'Masukkan email Anda')
               else
+                // ✅ Label dihilangkan dari sini
                 _buildMobileField(),
-
-              const SizedBox(height: 40),
-
-              // Tombol Kirim Kode
+              // ✅ Jarak ke tombol didekatkan
+              const SizedBox(height: 25),
               _buildPrimaryButton(
                 text: 'Kirim Kode',
                 onPressed: () {
-                  // Tambahkan logika kirim kode di sini
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const VerifyCodePage()),
+                  );
                 },
               ),
             ],
@@ -78,7 +89,6 @@ class _LupaPwPagesState extends State<LupaPwPages> {
     );
   }
 
-  // Widget untuk membuat tombol tab
   Widget _buildTabs() {
     return Container(
       decoration: BoxDecoration(
@@ -88,7 +98,7 @@ class _LupaPwPagesState extends State<LupaPwPages> {
       child: Row(
         children: [
           Expanded(child: _buildTabItem('E-mail', 0)),
-          Expanded(child: _buildTabItem('Nomor Handphone', 1)),
+          Expanded(child: _buildTabItem('Mobile Number', 1)),
         ],
       ),
     );
@@ -108,6 +118,16 @@ class _LupaPwPagesState extends State<LupaPwPages> {
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
         ),
         child: Text(
           text,
@@ -121,52 +141,16 @@ class _LupaPwPagesState extends State<LupaPwPages> {
     );
   }
 
-  // Widget untuk field input email
-  Widget _buildTextField({required String label, required String hint}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextField(
-          decoration: InputDecoration(
-            hintText: hint,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-  
-  // Widget untuk field input nomor telepon
-  Widget _buildMobileField() {
+  Widget _buildEmailField({required String hint}) {
     return TextField(
-      keyboardType: TextInputType.phone,
+      keyboardType: TextInputType.emailAddress,
       decoration: InputDecoration(
-        hintText: 'Masukkan nomor telepon Anda',
+        hintText: hint,
         prefixIcon: Padding(
           padding: const EdgeInsets.all(14.0),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
-                'assets/images/country.png', // GANTI dengan gambar bendera
-                width: 24,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '+62',
-                style: GoogleFonts.poppins(fontSize: 16),
-              ),
-              const SizedBox(width: 8),
-            ],
+          child: Image.asset(
+            'assets/images/icon_email.png',
+            height: 20,
           ),
         ),
         border: OutlineInputBorder(
@@ -181,7 +165,69 @@ class _LupaPwPagesState extends State<LupaPwPages> {
     );
   }
 
-  // Widget untuk tombol utama
+  // ✅ Widget diubah, tidak lagi menggunakan Column dan label
+  Widget _buildMobileField() {
+    return TextField(
+      keyboardType: TextInputType.phone,
+      decoration: InputDecoration(
+        hintText: 'Masukan nomor Anda',
+        prefixIcon: GestureDetector(
+          onTap: () {
+            showCountryPicker(
+              context: context,
+              countryListTheme: CountryListThemeData(
+                bottomSheetHeight: 500,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                inputDecoration: InputDecoration(
+                  labelText: 'Cari Negara',
+                  hintText: 'Mulai ketik untuk mencari',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: const Color(0xFF8C98A8).withOpacity(0.2),
+                    ),
+                  ),
+                ),
+              ),
+              onSelect: (Country country) {
+                setState(() {
+                  _selectedCountry = country;
+                });
+              },
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 10, 0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _selectedCountry.flagEmoji,
+                  style: const TextStyle(fontSize: 24),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '+${_selectedCountry.phoneCode}',
+                  style: GoogleFonts.poppins(fontSize: 16),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_drop_down, color: Colors.grey),
+              ],
+            ),
+          ),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPrimaryButton({required String text, required VoidCallback onPressed}) {
     return SizedBox(
       width: double.infinity,

@@ -78,28 +78,28 @@ class _RegisterPagesState extends State<RegisterPages> {
 
                     // Form Fields
                     _buildTextField(
-                      label: 'Full name',
+                      label: 'Nama Lengkap',
                       hint: 'Masukkan nama anda',
                       icon: Icons.person_outline,
                     ),
                     const SizedBox(height: 16),
 
                     _buildTextField(
-                      label: 'Email address',
+                      label: 'Alamat Email',
                       hint: 'Masukkan email anda',
                       icon: Icons.email_outlined,
                     ),
                     const SizedBox(height: 16),
 
                     _buildTextField(
-                      label: 'Phone number',
+                      label: 'Nomor Telepon',
                       hint: 'Masukkan nomor telepon',
                       icon: Icons.phone_iphone_rounded,
                     ),
                     const SizedBox(height: 16),
 
                     _buildPasswordField(
-                      label: 'Set password',
+                      label: 'Atur Kata Sandi',
                       isVisible: _isPasswordVisible,
                       onToggleVisibility: () {
                         setState(() {
@@ -110,7 +110,7 @@ class _RegisterPagesState extends State<RegisterPages> {
                     const SizedBox(height: 16),
 
                     _buildPasswordField(
-                      label: 'Confirm password',
+                      label: 'Konfirmasi Kata Sandi',
                       isVisible: _isConfirmPasswordVisible,
                       onToggleVisibility: () {
                         setState(() {
@@ -149,7 +149,7 @@ class _RegisterPagesState extends State<RegisterPages> {
       ),
       child: Row(
         children: [
-          Expanded(child: _buildTabItem('Login', 0)),
+          Expanded(child: _buildTabItem('Masuk', 0)),
           Expanded(child: _buildTabItem('Daftar', 1)),
         ],
       ),
@@ -235,7 +235,7 @@ class _RegisterPagesState extends State<RegisterPages> {
         TextField(
           obscureText: !isVisible,
           decoration: InputDecoration(
-            hintText: '••••••••',
+            hintText: 'Masukkan kata sandi',
             prefixIcon: const Icon(Icons.lock_outline_rounded,
                 color: Colors.grey),
             suffixIcon: IconButton(
